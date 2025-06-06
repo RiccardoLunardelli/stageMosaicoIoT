@@ -1,0 +1,13 @@
+{
+  "C_Cpp.intelliSenseEngine": "default",
+  "idf.espIdfPath": "/home/soufian/esp/v5.4.1/esp-idf",
+  "idf.pythonInstallPath": "/home/soufian/.espressif/python_env/idf5.1_py3.10_env/bin/python",
+  "idf.openOcdConfigs": [
+    "board/esp32c6-builtin.cfg"
+  ],
+  "idf.port": "/dev/ttyACM1",
+  "idf.toolsPath": "/home/soufian/.espressif",
+  "idf.customExtraVars": {
+    "IDF_TARGET": "esp32c6"
+  }
+}
