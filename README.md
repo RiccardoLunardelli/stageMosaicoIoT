@@ -318,7 +318,7 @@ GPIO18 ──► [220Ω] ──► LED+ ──► LED- ──► GND
 [![Version](https://img.shields.io/badge/Version-1.0-green)]()
 
 ## 🔖 Versione di riferimento
-Questa versione corrisponde al [commit iniziale v1.0](https://github.com/soufian774/stageMosaico/commit/22749744fa6fb87ecd782e3f4cd4104ce1107d3e) del progetto.
+Questa versione corrisponde al [commit v1.0](https://github.com/soufian774/stageMosaico/commit/22749744fa6fb87ecd782e3f4cd4104ce1107d3e) del progetto.
 
 ## 📋 Panoramica
 
@@ -367,9 +367,11 @@ idf.py monitor
 
 [![Platform](https://img.shields.io/badge/Platform-ESP32--C6-blue)](https://www.espressif.com/en/products/socs/esp32-c6)
 [![Modbus](https://img.shields.io/badge/Protocol-Modbus%20RTU-lightgrey)](https://modbus.org/)
-[![MQTT](https://img.shields.io/badge/Protocol-MQTT%20RTU-lightgrey)](https://mqtt.org/)
+[![MQTT](https://img.shields.io/badge/Protocol-MQTT-lightgrey)](https://mqtt.org/)
 [![Version](https://img.shields.io/badge/Version-2.0-green)]()
 
+## 🔖 Versione di riferimento
+Questa versione corrisponde al [commit v2.0](https://github.com/RiccardoLunardelli/stageMosaicoIoT/commit/6a5c8b90d1c5407a4bece779b5ac0e2f49033cdb) del progetto.
 
 ## 📋 Descrizione
 
@@ -388,8 +390,8 @@ Sistema completo di acquisizione dati Modbus RTU con trasmissione MQTT per il mo
 ```
 ESP32-C6          RS485 Converter        
 --------          ---------------        
-GPIO4 (TX)    →   TXD                    
-GPIO5 (RX)    ←   RXD                    
+GPIO4 (TX)    →   RXD                    
+GPIO5 (RX)    ←   TXD                    
 GND           →   GND                    
 5V/3.3V       →   VCC                    
 
@@ -465,6 +467,9 @@ GPIO19        →   LED Rosso + Resistore 220Ω → GND
 | 8 | Tensione anomala | Problemi alimentazione |
 | 9 | Sovratemperatura motore | Surriscaldamento motore |
 | 10-15 | Riservati | Espansioni future |
+
+## 🔖 TABELLE DETTAGLIATE DI RIFERIMENTO PER SIMULAZIONE
+[DOCUMENTAZIONE](https://claude.ai/public/artifacts/d67b5dab-cb55-4951-b91f-ea08aeaf79b4).
 
 
 ## 💡 Logica LED
@@ -557,62 +562,6 @@ Il LED rosso si accende quando si verifica una delle seguenti condizioni:
 }
 ```
 
-## 🚀 Installazione e Uso
-
-### 1. Configurazione ESP-IDF
-```bash
-git clone --recursive https://github.com/espressif/esp-idf.git
-cd esp-idf
-./install.sh
-. ./export.sh
-```
-
-### 2. Compilazione
-```bash
-idf.py set-target esp32c6
-idf.py build
-```
-
-### 3. Flash
-```bash
-idf.py -p /dev/ttyUSB0 flash monitor
-```
-
-### 4. Personalizzazione
-Modifica le seguenti definizioni in base al tuo setup:
-```c
-#define WIFI_SSID      "YOUR_WIFI_SSID"
-#define WIFI_PASSWORD  "YOUR_WIFI_PASSWORD"
-#define MQTT_BROKER_URI "mqtt://YOUR_BROKER_IP:1883"
-#define MB_SLAVE_ADDR   1  // Indirizzo del tuo dispositivo
-```
-
-## 🔧 Test e Debug
-
-### Test Comunicazione Modbus
-Il sistema esegue un test iniziale alla connessione per verificare la comunicazione:
-```
-🧪 === TEST INIZIALE INDIRIZZAMENTO 1-BASED ===
-🎯 Lettura registri 1-8 (non 0-7)...
-```
-
-### Verifica LED
-- **LED Giallo lampeggiante**: Sistema in inizializzazione/connessione
-- **LED Giallo impulsi regolari**: Sistema operativo normale
-- **LED Rosso acceso**: Presenza errori o allarmi
-
-### Debug via Serial Monitor
-Il sistema fornisce log dettagliati via seriale:
-```
-📈 STATISTICHE:
-   🎯 Sistema: OK | MQTT: CONNESSO | Dati: VALIDI  
-   📊 RS485: 125 letture, 120 OK (96.0% successo)
-   📤 MQTT: 125 messaggi inviati | ❌ 5 errori totali
-```
-
-### Test Valori Simulati
-Per testare la decodifica allarmi, usa il valore **1791** nei registri di test (rappresenta tutti gli allarmi attivi eccetto il bit 8 batteria che è stato rimosso).
-
 ## 🛠️ Auto-Recovery
 
 Il sistema implementa funzionalità di auto-recovery:
@@ -622,13 +571,6 @@ Il sistema implementa funzionalità di auto-recovery:
 - **Monitoraggio memoria heap** per rilevare memory leak
 
 ## 📊 Monitoring
-
-### Statistiche Sistema
-- Contatore messaggi MQTT inviati
-- Tasso di successo letture RS485
-- Tempo dall'ultima lettura riuscita
-- Uptime sistema
-- Memoria heap disponibile
 
 ### Stati Sistema
 - `SYS_INIT`: Inizializzazione
@@ -645,11 +587,6 @@ Il sistema implementa funzionalità di auto-recovery:
 - Gestione timeout per evitare blocchi
 - Monitoraggio continuo dello stato delle connessioni
 
-## 📞 Supporto
-
-Per problemi o domande contattare:
+Autori:
 - **Soufian Markouni** 
 - **Riccardo Lunardelli**
-
-**Versione documentazione**: 1.0  
-**Compatibile con**: ESP32-C6, ESP-IDF v5.x
