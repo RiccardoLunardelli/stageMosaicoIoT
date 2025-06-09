@@ -27,7 +27,7 @@
  * - Reg1: Temperatura/10 (°C), Reg2: Setpoint/10 (°C)
  * - Reg3: Umidità/10 (%), Reg4: Pressione/100 (bar)  
  * - Reg5: Status word, Reg6: Runtime (ore)
- * - Reg7: Power/100 (kW), Reg8: Allarmi (SENZA bit 8 batteria)
+ * - Reg7: Power/100 (kW), Reg8: Allarmi 
  * 
  * LED LOGICA:
  * - Giallo: Boot/Connecting/Normal/TX/RS485/Error
@@ -246,7 +246,6 @@ void decode_status_register(uint16_t status) {
 }
 
 // Decodifica e visualizza contenuto registro allarmi (registro 8)
-// NOTA: Rimosso bit 8 batteria - non applicabile ai frigoriferi industriali
 void decode_alarms_register(uint16_t alarms) {
     if (alarms == 0) {
         ESP_LOGI(TAG, "✅ ALLARMI: Nessun allarme attivo");
@@ -265,7 +264,7 @@ void decode_alarms_register(uint16_t alarms) {
     if (alarms & 0x0040) ESP_LOGW(TAG, "     🚪 Bit 6: ALLARME Porta aperta troppo a lungo");
     if (alarms & 0x0080) ESP_LOGW(TAG, "     🧽 Bit 7: ALLARME Filtro sporco");
     
-    // Bit 8-9: Allarmi scalati (erano bit 9-10 nella versione precedente)
+    // Bit 8-9
     if (alarms & 0x0100) ESP_LOGW(TAG, "     ⚡ Bit 8: ALLARME Tensione anomala");        
     if (alarms & 0x0200) ESP_LOGW(TAG, "     🔥 Bit 9: ALLARME Sovratemperatura motore"); 
     
@@ -290,7 +289,7 @@ void update_error_led() {
         if (!led_error_state) ESP_LOGW(TAG, "🔴 LED ERRORE ON: MQTT disconnesso");
     } else if (data_initialized && registers.paramET_alarms != 0) {
         should_be_on = true;
-        if (!led_error_state) ESP_LOGW(TAG, "🔴 LED ERRORE ON: Allarmi Modbus attivi (0x%04X) - BIT 8 BATTERIA RIMOSSO", registers.paramET_alarms);
+        if (!led_error_state) ESP_LOGW(TAG, "🔴 LED ERRORE ON: Allarmi Modbus attivi (0x%04X)", registers.paramET_alarms);
     } else if (system_state == SYS_ERROR_RS485 || system_state == SYS_ERROR_COMM) {
         should_be_on = true;
         if (!led_error_state) ESP_LOGW(TAG, "🔴 LED ERRORE ON: Errore sistema");
@@ -914,7 +913,6 @@ extern "C" void app_main(void) {
     ESP_LOGI(TAG, "   ✅ Indirizzamento 1-BASED (registri 1-8)");
     ESP_LOGI(TAG, "   ✅ Decodifica completa registri status e allarmi");
     ESP_LOGI(TAG, "   ✅ LED intelligenti (giallo: sistema, rosso: errori)");
-    ESP_LOGI(TAG, "   ✅ RIMOSSO BIT 8 BATTERIA (non applicabile ai frigoriferi)");
     ESP_LOGI(TAG, "   ✅ Auto-recovery errori RS485");
     ESP_LOGI(TAG, "   ✅ MQTT con 3 topic + debug completo");
     
@@ -1032,7 +1030,6 @@ extern "C" void app_main(void) {
     ESP_LOGI(TAG, "🎯 === SISTEMA OPERATIVO ===");
     ESP_LOGI(TAG, "📡 Topic MQTT: data=%s, status=%s, debug=%s", TOPIC_DATA_STATIC, TOPIC_SYSTEM_STATUS, TOPIC_DEBUG_RAW);
     ESP_LOGI(TAG, "⏰ Intervalli: lettura=%ds, status=%ds", DATA_READ_INTERVAL/1000, STATUS_SEND_INTERVAL/1000);
-    ESP_LOGI(TAG, "🔧 Test allarmi: usa valore 1791 per tutti (senza bit 8)");
     
     // ═══════════════════════════════════════════════════════════════════════════
     // LOOP PRINCIPALE CON AUTO-RECOVERY E MONITORAGGIO
