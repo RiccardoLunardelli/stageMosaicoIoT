@@ -362,3 +362,295 @@ idf.py monitor
 - [ESP-IDF UART Driver](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/uart.html)
 - [ESP Modbus Master](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/protocols/mb_master.html)
 - [Modbus Protocol](https://modbus.org/)
+
+# ESP32-C6 MODBUS RTU MASTER + MQTT
+
+**Versione**: 2.0.0_CLEAN_NO_BIT8  
+**Hardware**: ESP32-C6 Development Board  
+**Autori**: Soufian Markouni e Riccardo Lunardelli  
+**Data**: Giugno 2025
+
+## 📋 Descrizione
+
+Sistema completo di acquisizione dati Modbus RTU con trasmissione MQTT per il monitoraggio di frigoriferi industriali. Il sistema legge 8 registri holding (1-8) da un dispositivo slave Modbus e li trasmette via MQTT con gestione intelligente LED e auto-recovery degli errori.
+
+## 🔧 Hardware Setup
+
+### Componenti Richiesti
+- **ESP32-C6 Development Board**
+- **Convertitore USB-RS485** con controllo DE/RE
+- **LED giallo** per status sistema (con resistore 220Ω)
+- **LED rosso** per segnalazione errori (con resistore 220Ω)
+
+### Schema di Collegamento
+
+```
+ESP32-C6          RS485 Converter        Dispositivo Modbus
+--------          ---------------        ------------------
+GPIO4 (TX)    →   TXD                    
+GPIO5 (RX)    ←   RXD                    A+/B- → Dispositivo
+GPIO6         →   DE/RE                  
+GND           →   GND                    
+5V/3.3V       →   VCC                    
+
+GPIO18        →   LED Giallo + Resistore 220Ω → GND
+GPIO19        →   LED Rosso + Resistore 220Ω → GND
+```
+
+## ⚙️ Configurazione
+
+### Parametri Modbus RTU
+- **Velocità**: 9600 baud
+- **Formato**: 8-N-1 (8 bit dati, nessuna parità, 1 stop bit)
+- **Indirizzo Slave**: 1
+- **Registri**: 1-8 (1-based addressing)
+- **Timeout**: 1000ms
+
+### Configurazione Wi-Fi
+```c
+#define WIFI_SSID      "LAPTOP_Luna"
+#define WIFI_PASSWORD  "esp12345"
+```
+
+### Configurazione MQTT
+```c
+#define MQTT_BROKER_URI "mqtt://192.168.137.128:1883"
+#define MQTT_CLIENT_ID   "ESP32_FRIGO01_V2_CLEAN"
+```
+
+### Topic MQTT
+- **Dati operativi**: `sensori/frigo01/data_static` (ogni 10s)
+- **Status sistema**: `sensori/frigo01/status` (ogni 30s)
+- **Debug raw**: `sensori/frigo01/debug_raw` (con ogni lettura)
+
+## 📊 Mappatura Registri
+
+| Registro | Descrizione | Unità | Scaling | Range |
+|----------|-------------|-------|---------|-------|
+| **Reg1** | Temperatura evaporatore | °C | /10 | -40.0 ÷ +85.0 |
+| **Reg2** | Setpoint temperatura | °C | /10 | -40.0 ÷ +85.0 |
+| **Reg3** | Umidità relativa | % | /10 | 0.0 ÷ 100.0 |
+| **Reg4** | Pressione sistema | bar | /100 | 0.00 ÷ 25.00 |
+| **Reg5** | Status word | - | 1:1 | Bit field |
+| **Reg6** | Runtime compressore | ore | 1:1 | 0 ÷ 65535 |
+| **Reg7** | Consumo energia | kW | /100 | 0.00 ÷ 655.35 |
+| **Reg8** | Registro allarmi | - | 1:1 | Bit field |
+
+## 🔍 Decodifica Registro Status (Reg5)
+
+| Bit | Descrizione | Valore 0 | Valore 1 |
+|-----|-------------|----------|----------|
+| 0 | Compressore | SPENTO | ACCESO |
+| 1 | Ventilatore evaporatore | SPENTO | ACCESO |
+| 2 | Ventilatore condensatore | SPENTO | ACCESO |
+| 3 | Modalità operativa | NORMALE | SBRINAMENTO |
+| 4 | Controllo | AUTOMATICO | MANUALE |
+| 5 | Stato sistema | ATTIVO | STANDBY |
+| 6 | Stato porta | CHIUSA | APERTA |
+| 7 | Sensore temperatura | NON CONFERMATO | OK |
+| 8-15 | Riservati | - | Altri stati |
+
+## 🚨 Decodifica Registro Allarmi (Reg8)
+
+| Bit | Allarme | Descrizione |
+|-----|---------|-------------|
+| 0 | Temperatura alta | Superato limite massimo |
+| 1 | Pressione alta | Pressione oltre soglia |
+| 2 | Sensore difettoso | Guasto sensore temperatura |
+| 3 | Comunicazione | Perdita comunicazione |
+| 4 | Compressore fault | Malfunzionamento compressore |
+| 5 | Manutenzione | Richiesta manutenzione |
+| 6 | Porta aperta | Porta aperta troppo a lungo |
+| 7 | Filtro sporco | Necessaria pulizia filtro |
+| 8 | Tensione anomala | Problemi alimentazione |
+| 9 | Sovratemperatura motore | Surriscaldamento motore |
+| 10-15 | Riservati | Espansioni future |
+
+**NOTA**: Il bit 8 della versione precedente (allarme batteria) è stato rimosso in quanto non applicabile ai frigoriferi industriali.
+
+## 💡 Logica LED
+
+### LED Giallo (GPIO18) - Status Sistema
+- **Boot**: Lampeggio rapido (200ms) - Inizializzazione
+- **Connecting**: Lampeggio medio (500ms) - Connessione Wi-Fi/MQTT
+- **Normal**: Impulso breve ogni 2s - Sistema operativo
+- **Data TX**: 3 lampeggi rapidi - Trasmissione dati
+- **RS485 Comm**: 2 lampeggi veloci - Comunicazione Modbus
+- **Error**: Lampeggio continuo - Errore sistema
+
+### LED Rosso (GPIO19) - Errori
+Il LED rosso si accende quando si verifica una delle seguenti condizioni:
+- Wi-Fi disconnesso
+- MQTT disconnesso  
+- Allarmi Modbus attivi (Reg8 ≠ 0)
+- Errori comunicazione RS485
+
+## 📡 Formato Messaggi MQTT
+
+### Data Static Message
+```json
+{
+  "tipo": "DATA_STATIC",
+  "id_nodo": "FRIGO01",
+  "versione": "2.0.0_CLEAN_NO_BIT8",
+  "data_valid": true,
+  "paramET_temp": 4.5,
+  "paramET_setpoint": 5.0,
+  "paramET_umid": 75.2,
+  "paramET_pressure": 2.45,
+  "paramET_status": 7,
+  "paramET_runtime": 1250,
+  "paramET_power": 1.85,
+  "paramET_alarms": 0,
+  "compressore_stato": "ACCESO",
+  "allarmi_attivi": false,
+  "led_error_active": false,
+  "comp_acceso": true,
+  "fan_evap_acceso": true,
+  "fan_cond_acceso": true,
+  "sbrinamento_attivo": false,
+  "modalita_manuale": false,
+  "porta_aperta": false,
+  "letture_rs485": 125,
+  "letture_ok": 120,
+  "timestamp": "2025-06-09T14:30:25Z",
+  "message_id": 125
+}
+```
+
+### System Status Message
+```json
+{
+  "tipo": "SYSTEM_STATUS",
+  "id_nodo": "FRIGO01",
+  "versione": "2.0.0_CLEAN_NO_BIT8",
+  "system_state": "RUNNING",
+  "led_state": "NORMAL",
+  "led_error_active": false,
+  "wifi_connected": true,
+  "mqtt_connected": true,
+  "data_initialized": true,
+  "rs485_reads": 125,
+  "successful_reads": 120,
+  "messages_sent": 125,
+  "errors": 5,
+  "last_read_sec_ago": 2,
+  "uptime_sec": 3600,
+  "free_heap": 180000,
+  "timestamp": "2025-06-09T14:30:25Z"
+}
+```
+
+### Debug Raw Message
+```json
+{
+  "tipo": "DEBUG_RAW",
+  "id_nodo": "FRIGO01",
+  "raw_reg1": 45,
+  "raw_reg2": 50,
+  "raw_reg3": 752,
+  "raw_reg4": 245,
+  "raw_reg5": 7,
+  "raw_reg6": 1250,
+  "raw_reg7": 185,
+  "raw_reg8": 0,
+  "timestamp": "2025-06-09T14:30:25Z"
+}
+```
+
+## 🚀 Installazione e Uso
+
+### 1. Configurazione ESP-IDF
+```bash
+git clone --recursive https://github.com/espressif/esp-idf.git
+cd esp-idf
+./install.sh
+. ./export.sh
+```
+
+### 2. Compilazione
+```bash
+idf.py set-target esp32c6
+idf.py build
+```
+
+### 3. Flash
+```bash
+idf.py -p /dev/ttyUSB0 flash monitor
+```
+
+### 4. Personalizzazione
+Modifica le seguenti definizioni in base al tuo setup:
+```c
+#define WIFI_SSID      "YOUR_WIFI_SSID"
+#define WIFI_PASSWORD  "YOUR_WIFI_PASSWORD"
+#define MQTT_BROKER_URI "mqtt://YOUR_BROKER_IP:1883"
+#define MB_SLAVE_ADDR   1  // Indirizzo del tuo dispositivo
+```
+
+## 🔧 Test e Debug
+
+### Test Comunicazione Modbus
+Il sistema esegue un test iniziale alla connessione per verificare la comunicazione:
+```
+🧪 === TEST INIZIALE INDIRIZZAMENTO 1-BASED ===
+🎯 Lettura registri 1-8 (non 0-7)...
+```
+
+### Verifica LED
+- **LED Giallo lampeggiante**: Sistema in inizializzazione/connessione
+- **LED Giallo impulsi regolari**: Sistema operativo normale
+- **LED Rosso acceso**: Presenza errori o allarmi
+
+### Debug via Serial Monitor
+Il sistema fornisce log dettagliati via seriale:
+```
+📈 STATISTICHE:
+   🎯 Sistema: OK | MQTT: CONNESSO | Dati: VALIDI  
+   📊 RS485: 125 letture, 120 OK (96.0% successo)
+   📤 MQTT: 125 messaggi inviati | ❌ 5 errori totali
+```
+
+### Test Valori Simulati
+Per testare la decodifica allarmi, usa il valore **1791** nei registri di test (rappresenta tutti gli allarmi attivi eccetto il bit 8 batteria che è stato rimosso).
+
+## 🛠️ Auto-Recovery
+
+Il sistema implementa funzionalità di auto-recovery:
+- **Riconnessione Wi-Fi automatica** in caso di disconnessione
+- **Retry comunicazione Modbus** con cambio stato dopo errori consecutivi
+- **Ripristino automatico** dello stato normale dopo recupero errori
+- **Monitoraggio memoria heap** per rilevare memory leak
+
+## 📊 Monitoring
+
+### Statistiche Sistema
+- Contatore messaggi MQTT inviati
+- Tasso di successo letture RS485
+- Tempo dall'ultima lettura riuscita
+- Uptime sistema
+- Memoria heap disponibile
+
+### Stati Sistema
+- `SYS_INIT`: Inizializzazione
+- `SYS_WIFI_CONNECTING`: Connessione Wi-Fi
+- `SYS_MQTT_CONNECTING`: Connessione MQTT  
+- `SYS_RUNNING`: Operativo normale
+- `SYS_ERROR_RS485`: Errore comunicazione
+- `SYS_ERROR_COMM`: Errore comunicazione generale
+
+## 🔒 Note di Sicurezza
+
+- Il sistema non include autenticazione MQTT (configurabile)
+- Validazione CRC16 per tutte le comunicazioni Modbus
+- Gestione timeout per evitare blocchi
+- Monitoraggio continuo dello stato delle connessioni
+
+## 📞 Supporto
+
+Per problemi o domande contattare:
+- **Soufian Markouni** 
+- **Riccardo Lunardelli**
+
+**Versione documentazione**: 1.0  
+**Compatibile con**: ESP32-C6, ESP-IDF v5.x
