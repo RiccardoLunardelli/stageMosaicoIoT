@@ -363,12 +363,13 @@ idf.py monitor
 - [ESP Modbus Master](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/protocols/mb_master.html)
 - [Modbus Protocol](https://modbus.org/)
 
-# ESP32-C6 MODBUS RTU MASTER + MQTT
+# ESP32-C6 MODBUS RTU MASTER + MQTT - Versione 2.0
 
-**Versione**: 2.0.0_CLEAN_NO_BIT8  
-**Hardware**: ESP32-C6 Development Board  
-**Autori**: Soufian Markouni e Riccardo Lunardelli  
-**Data**: Giugno 2025
+[![Platform](https://img.shields.io/badge/Platform-ESP32--C6-blue)](https://www.espressif.com/en/products/socs/esp32-c6)
+[![Modbus](https://img.shields.io/badge/Protocol-Modbus%20RTU-lightgrey)](https://modbus.org/)
+[![MQTT](https://img.shields.io/badge/Protocol-MQTT%20RTU-lightgrey)](https://mqtt.org/)
+[![Version](https://img.shields.io/badge/Version-2.0-green)]()
+
 
 ## 📋 Descrizione
 
@@ -378,18 +379,17 @@ Sistema completo di acquisizione dati Modbus RTU con trasmissione MQTT per il mo
 
 ### Componenti Richiesti
 - **ESP32-C6 Development Board**
-- **Convertitore USB-RS485** con controllo DE/RE
+- **Convertitore USB-RS485** 
 - **LED giallo** per status sistema (con resistore 220Ω)
 - **LED rosso** per segnalazione errori (con resistore 220Ω)
 
 ### Schema di Collegamento
 
 ```
-ESP32-C6          RS485 Converter        Dispositivo Modbus
---------          ---------------        ------------------
+ESP32-C6          RS485 Converter        
+--------          ---------------        
 GPIO4 (TX)    →   TXD                    
-GPIO5 (RX)    ←   RXD                    A+/B- → Dispositivo
-GPIO6         →   DE/RE                  
+GPIO5 (RX)    ←   RXD                    
 GND           →   GND                    
 5V/3.3V       →   VCC                    
 
@@ -403,19 +403,19 @@ GPIO19        →   LED Rosso + Resistore 220Ω → GND
 - **Velocità**: 9600 baud
 - **Formato**: 8-N-1 (8 bit dati, nessuna parità, 1 stop bit)
 - **Indirizzo Slave**: 1
-- **Registri**: 1-8 (1-based addressing)
+- **Registri**: 1-8 (1-based addressing - HOLDING REGISTERS)
 - **Timeout**: 1000ms
 
 ### Configurazione Wi-Fi
 ```c
-#define WIFI_SSID      "LAPTOP_Luna"
-#define WIFI_PASSWORD  "esp12345"
+#define WIFI_SSID      ""
+#define WIFI_PASSWORD  ""
 ```
 
 ### Configurazione MQTT
 ```c
-#define MQTT_BROKER_URI "mqtt://192.168.137.128:1883"
-#define MQTT_CLIENT_ID   "ESP32_FRIGO01_V2_CLEAN"
+#define MQTT_BROKER_URI ""
+#define MQTT_CLIENT_ID   ""
 ```
 
 ### Topic MQTT
@@ -466,7 +466,6 @@ GPIO19        →   LED Rosso + Resistore 220Ω → GND
 | 9 | Sovratemperatura motore | Surriscaldamento motore |
 | 10-15 | Riservati | Espansioni future |
 
-**NOTA**: Il bit 8 della versione precedente (allarme batteria) è stato rimosso in quanto non applicabile ai frigoriferi industriali.
 
 ## 💡 Logica LED
 
